@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/activity_model.dart';
 
@@ -27,7 +29,7 @@ class ActivityLocalDataSourceImpl implements ActivityLocalDataSource {
       await activityBox.put(activity.id, activity);
     }
 
-    print('📦 Cached ${activities.length} activities in Hive');
+    log('📦 Cached ${activities.length} activities in Hive');
   }
 
   @override

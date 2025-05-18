@@ -10,7 +10,7 @@ import 'package:rtm_sat/features/visits_tracker/presentation/cubit/visits_cubit.
 List<SingleChildWidget> getProviders() {
   return [
     BlocProvider(create: (_) => sl<DashboardCubit>()..loadDashboardItems()),
-    BlocProvider(create: (_) => sl<VisitsCubit>()),
+    BlocProvider(create: (_) => sl<VisitsCubit>()..getVisits()),
     BlocProvider(create: (_) => sl<CustomerCubit>()..getCustomers()),
     BlocProvider(create: (_) => sl<VisitDetailCubit>()),
     BlocProvider(create: (_) => sl<ActivityCubit>()..getActivities()),

@@ -1,0 +1,80 @@
+name: Flutter CI/CD
+
+on:
+    push:
+        branches: [main, develop]
+    pull_request:
+        branches: [main, develop]
+
+jobs:
+    test:
+        name: Test and Analyze
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v3
+
+            - name: Set up Flutter
+              uses: subosito/flutter-action@v2
+              with:
+                  flutter-version: "3.29.2"
+                  channel: "stable"
+
+            - name: Install dependencies
+              run: flutter pub get
+
+            - name: Create .env file
+              run: |
+                  echo "API_URL=${{ secrets.BASE_URL }}" > .env
+                  echo "API_KEY=${{ secrets.API_KEY }}" >> .env
+
+            - name: Verify formatting
+              run: dart format --output=none --set-exit-if-changed .
+
+            - name: Analyze project
+              run: flutter analyze
+
+            - name: Generate mocks for tests
+              run: flutter pub run build_runner build --delete-conflicting-outputs
+
+            - name: Run unit tests
+              run: flutter test --coverage
+
+            - name: Upload coverage reports
+              uses: codecov/codecov-action@v3
+              with:
+                  file: ./coverage/lcov.info
+                  fail_ci_if_error: false
+                  verbose: true
+
+    build:
+        name: Build APK
+        needs: test
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v3
+
+            - name: Set up Flutter
+              uses: subosito/flutter-action@v2
+              with:
+                  flutter-version: "3.29.2"
+                  channel: "stable"
+
+            - name: Install dependencies
+              run: flutter pub get
+
+            - name: Create .env file
+              run: |
+                  echo "API_URL=${{ secrets.API_URL }}" > .env
+                  echo "API_KEY=${{ secrets.API_KEY }}" >> .env
+
+            - name: Build APK
+              run: flutter build apk --release
+
+            - name: Upload APK
+              uses: actions/upload-artifact@v3
+              with:
+                  name: release-apk
+                  path: build/app/outputs/flutter-apk/app-release.apk

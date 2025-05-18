@@ -22,6 +22,11 @@ class _VisitsListPageState extends State<VisitsListPage> {
   }
 
   @override
+  void dispose() {
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -206,13 +211,14 @@ class _VisitsListPageState extends State<VisitsListPage> {
       child: InkWell(
         onTap: () async {
           if (visit.id != null) {
-            await Navigator.push(
-              context,
+            // Create a fresh provider instead of using the same cubit
+            await Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => VisitDetailsPage(visitId: visit.id!),
+                builder: (context) => VisitDetailsPage(visitId: visit.id!),
               ),
             );
-            // Refresh list after returning from details page
+
+            // Refresh visits list after returning
             if (mounted) {
               context.read<VisitsCubit>().getVisits();
             }

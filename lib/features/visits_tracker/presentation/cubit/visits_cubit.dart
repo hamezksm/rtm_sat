@@ -68,18 +68,28 @@ class VisitsCubit extends Cubit<VisitsState> {
   }
 
   Future<void> syncVisits() async {
+    // Store the current state before emitting loading
+    final currentState = state;
     emit(VisitsLoading());
+
     try {
-      // Perform sync operation
+      // Perform sync
       await syncVisitsUseCase();
 
-      // Sync complete, now reload the data
-      final visits = await getVisitsUseCase();
+      // Restore the previous state content if it was a detailed view
+      if (currentState is VisitLoaded) {
+        // Get the updated visit after sync
+        final visit = await getVisitByIdUseCase(currentState.visit.id!);
+        if (visit != null) {
+          emit(VisitLoaded(visit: visit));
+        }
+      } else {
+        // In list view, load all visits
+        final visits = await getVisitsUseCase();
+        emit(VisitsLoaded(visits: visits));
+      }
 
-      // Emit loaded state with the fresh data
-      emit(VisitsLoaded(visits: visits));
-
-      // Also emit sync success for UI feedback
+      // Signal sync completion
       emit(const VisitsSynced());
     } catch (e) {
       emit(VisitsError(message: e.toString()));
