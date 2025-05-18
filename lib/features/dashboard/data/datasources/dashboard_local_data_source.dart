@@ -33,6 +33,12 @@ class DashboardLocalDataSourceImpl implements DashboardLocalDataSource {
         'iconData': 'location_on',
         'route': '/visits',
       },
+      {
+        'id': '2',
+        'title': 'Customers',
+        'iconData': 'people',
+        'route': '/customers',
+      },
     ];
 
     for (final item in defaultItems) {

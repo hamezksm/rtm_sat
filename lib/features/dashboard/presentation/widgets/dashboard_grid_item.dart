@@ -71,12 +71,10 @@ class DashboardGridItem extends StatelessWidget {
     switch (iconName) {
       case 'location_on':
         return Icons.location_on;
-      case 'bar_chart':
-        return Icons.bar_chart;
-      case 'inventory':
-        return Icons.inventory;
       case 'people':
         return Icons.people;
+      case 'bar_chart':
+        return Icons.bar_chart;
       default:
         return Icons.dashboard;
     }

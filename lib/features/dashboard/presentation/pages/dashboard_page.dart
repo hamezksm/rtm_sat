@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:rtm_sat/core/di/service_locator.dart';
 import 'package:rtm_sat/features/dashboard/presentation/cubit/dashboard_cubit.dart';
 import 'package:rtm_sat/features/dashboard/presentation/widgets/dashboard_grid_item.dart';
 
@@ -9,12 +8,9 @@ class DashboardPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => sl<DashboardCubit>()..loadDashboardItems(),
-      child: Scaffold(
-        appBar: AppBar(title: const Text('Dashboard'), centerTitle: true),
-        body: const DashboardContent(),
-      ),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Dashboard'), centerTitle: true),
+      body: const DashboardContent(),
     );
   }
 }
