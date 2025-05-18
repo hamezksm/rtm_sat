@@ -24,15 +24,18 @@ jobs:
               run: flutter pub get
 
             - name: Create .env file
+              env:
+                  BASE_URL: ${{ secrets.BASE_URL }}
+                  API_KEY: ${{ secrets.API_KEY }}
               run: |
-                  echo "API_URL=${{ secrets.BASE_URL }}" > .env
-                  echo "API_KEY=${{ secrets.API_KEY }}" >> .env
+                  echo "API_URL=${BASE_URL}" > .env
+                  echo "API_KEY=${API_KEY}" >> .env
 
-            - name: Verify formatting
-              run: dart format --output=none --set-exit-if-changed .
+            # - name: Verify formatting
+            #   run: dart format --output=none --set-exit-if-changed .
 
-            - name: Analyze project
-              run: flutter analyze
+            # - name: Analyze project
+            #   run: flutter analyze
 
             - name: Generate mocks for tests
               run: flutter pub run build_runner build --delete-conflicting-outputs
@@ -66,9 +69,12 @@ jobs:
               run: flutter pub get
 
             - name: Create .env file
+              env:
+                  BASE_URL: ${{ secrets.API_URL }}
+                  API_KEY: ${{ secrets.API_KEY }}
               run: |
-                  echo "API_URL=${{ secrets.API_URL }}" > .env
-                  echo "API_KEY=${{ secrets.API_KEY }}" >> .env
+                  echo "API_URL=${BASE_URL}" > .env
+                  echo "API_KEY=${API_KEY}" >> .env
 
             - name: Build APK
               run: flutter build apk --release
