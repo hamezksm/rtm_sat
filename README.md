@@ -6,17 +6,16 @@ A robust, **offline-first** Flutter application built to streamline and digitize
 
 ## 📱 Screenshots
 
-    <div align="center">
+<div align="center">
+<div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;">
+    <img src="readme_files/Simulator Screenshot - iPhone 16 Pro Max - 2025-05-19 at 00.23.24.png" alt="Dashboard Screen" width="200"/>
+    <img src="readme_files/Simulator Screenshot - iPhone 16 Pro Max - 2025-05-19 at 00.23.39.png" alt="Customer Details" width="200"/>
+    <img src="readme_files/Simulator Screenshot - iPhone 16 Pro Max - 2025-05-19 at 00.23.45.png" alt="Visit Tracking" width="200"/>
+    <img src="readme_files/Simulator Screenshot - iPhone 16 Pro Max - 2025-05-19 at 00.23.58.png" alt="Activity Log" width="200"/>
+    <img src="readme_files/Simulator Screenshot - iPhone 16 Pro Max - 2025-05-19 at 00.24.00.png" alt="Settings Screen" width="200"/>
+</div>
 
-        <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;">
-            <img src="readme_files/Simulator Screenshot - iPhone 16 Pro Max - 2025-05-19 at 00.23.24.png" alt="Dashboard Screen" width="200"/>
-            <img src="readme_files/Simulator Screenshot - iPhone 16 Pro Max - 2025-05-19 at 00.23.39.png" alt="Customer Details" width="200"/>
-            <img src="readme_files/Simulator Screenshot - iPhone 16 Pro Max - 2025-05-19 at 00.23.45.png" alt="Visit Tracking" width="200"/>
-            <img src="readme_files/Simulator Screenshot - iPhone 16 Pro Max - 2025-05-19 at 00.23.58.png" alt="Activity Log" width="200"/>
-            <img src="readme_files/Simulator Screenshot - iPhone 16 Pro Max - 2025-05-19 at 00.24.00.png" alt="Settings Screen" width="200"/>
-        </div>
-        
-    </div>
+</div>
 
 ---
 
@@ -35,7 +34,7 @@ This application adopts **Clean Architecture** for modular, testable, and scalab
 * **Data Layer**
   Handles interaction with local (Hive) and remote (REST API) data sources.
 
-```
+``` bash
 lib/
 ├── core/                 # Shared app infrastructure (DI, routes, utils)
 ├── features/             # Modular feature-based structure
@@ -153,7 +152,7 @@ cd rtm_sat
 
 Create a `.env` file:
 
-```
+``` bash
 API_URL=your_api_url_here
 API_KEY=your_api_key_here
 ```
