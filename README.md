@@ -139,8 +139,8 @@ Future<void> syncVisits() async {
 
 ### 🔧 Prerequisites
 
-* Flutter SDK: `>=3.16.0`
-* Dart SDK: `>=3.0.0`
+* Flutter SDK: `>=3.29.2`
+* Dart SDK: `>=3.7.2`
 * IDE: Android Studio / VS Code
 
 ### 🛠️ Installation
