@@ -70,7 +70,7 @@ jobs:
 
             - name: Create .env file
               env:
-                  BASE_URL: ${{ secrets.API_URL }}
+                  BASE_URL: ${{ secrets.BASE_URL }}
                   API_KEY: ${{ secrets.API_KEY }}
               run: |
                   echo "API_URL=${BASE_URL}" > .env
