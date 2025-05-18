@@ -1,0 +1,9 @@
+targets:
+  $default:
+    sources:
+      exclude:
+        # Exclude the Flutter SDK and FVM files
+        - "**/.fvm/**"
+        - "**/flutter_sdk/**"
+        - "**/.dart_tool/**"
+        - "**/generated_plugin_registrant.dart"
