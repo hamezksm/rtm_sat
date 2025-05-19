@@ -52,6 +52,6 @@ jobs:
               uses: logickoder/g-drive-upload@1.0.0
               with:
                   credentials: ${{ secrets.GCP_CREDENTIAL }}
-                  filename: "app/build/outputs/apk/debug/app-debug.apk"
+                  filename: "build/app/outputs/flutter-apk/app-release.apk"
                   folderId: ${{ secrets.GOOGLE_FOLDER_ID }}
                   overwrite: "true"
