@@ -26,17 +26,24 @@ jobs:
             - name: Install Flutter
               uses: subosito/flutter-action@v2
               with:
-                  flutter-version: "3.24.3"
+                  flutter-version: "3.29.3"
 
             - name: Install dependencies
               run: flutter pub get
 
+            - name: Create .env file
+              env:
+                  BASE_URL: ${{ secrets.BASE_URL }}
+                  API_KEY: ${{ secrets.API_KEY }}
+              run: |
+                  echo "API_URL=${BASE_URL}" > .env
+                  echo "API_KEY=${API_KEY}" >> .env
+
             - name: Build APK
               run: flutter build apk --release
 
-            - name: Upload built apk to Google Drive
-              uses: Jodebu/upload-to-drive@master
+            - name: Upload APK artifact
+              uses: actions/upload-artifact@v3.1.3
               with:
-                  target: "build/app/outputs/flutter-apk/app-release.apk"
-                  credentials: secrets.ENCODED_CREDENTIALS_SMARTPAY
-                  folder: secrets.GOOGLE_DRIVE_ID
+                  name: release-apk
+                  path: build/app/outputs/flutter-apk/app-release.apk
