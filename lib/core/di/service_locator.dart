@@ -29,6 +29,7 @@ import 'package:rtm_sat/features/visits_tracker/data/datasources/visits_local_da
 import 'package:rtm_sat/features/visits_tracker/data/datasources/visits_remote_data_source.dart';
 import 'package:rtm_sat/features/visits_tracker/data/models/visit_model.dart';
 import 'package:rtm_sat/features/visits_tracker/data/repositories/visits_repository_impl.dart';
+import 'package:rtm_sat/features/visits_tracker/domain/entities/visit.dart';
 import 'package:rtm_sat/features/visits_tracker/domain/repositories/visits_repository.dart';
 import 'package:rtm_sat/features/visits_tracker/domain/usecases/create_visit.dart';
 import 'package:rtm_sat/features/visits_tracker/domain/usecases/delete_visit.dart';
@@ -38,6 +39,7 @@ import 'package:rtm_sat/features/visits_tracker/domain/usecases/update_visit.dar
 import 'package:rtm_sat/features/visits_tracker/domain/usecases/get_visit_by_id.dart';
 import 'package:rtm_sat/features/visits_tracker/presentation/cubit/visit_detail_cubit.dart';
 import 'package:rtm_sat/features/visits_tracker/presentation/cubit/visits_cubit.dart';
+import 'package:rtm_sat/features/visits_tracker/presentation/cubit/visit_form_cubit.dart';
 
 final GetIt sl = GetIt.instance;
 
@@ -198,6 +200,16 @@ Future<void> initDependencies() async {
   // Register Activity Cubit
   sl.registerFactory<ActivityCubit>(
     () => ActivityCubit(repository: sl<ActivityRepository>()),
+  );
+
+  // Register VisitFormCubit
+
+  sl.registerFactoryParam<VisitFormCubit, Visit?, void>(
+    (visit, _) => VisitFormCubit(
+      customerRepository: sl<CustomerRepository>(),
+      activityRepository: sl<ActivityRepository>(),
+      initialVisit: visit,
+    ),
   );
 
   // Print success message for debugging

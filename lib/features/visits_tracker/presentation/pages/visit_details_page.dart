@@ -1,40 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:rtm_sat/features/visits_tracker/domain/entities/visit.dart';
+import 'package:rtm_sat/features/visits_tracker/presentation/pages/visit_edit_page.dart';
 import '../cubit/visits_cubit.dart';
 import '../widgets/customer_name_display.dart';
 import '../widgets/activity_name_display.dart';
 
-class VisitDetailsPage extends StatefulWidget {
+class VisitDetailsPage extends StatelessWidget {
   final int visitId;
 
   const VisitDetailsPage({super.key, required this.visitId});
 
   @override
-  State<VisitDetailsPage> createState() => _VisitDetailsPageState();
-}
-
-class _VisitDetailsPageState extends State<VisitDetailsPage> {
-  late VisitsCubit _visitsCubit;
-  bool _isDisposed = false; // Add this flag
-
-  @override
-  void initState() {
-    super.initState();
-    _visitsCubit = context.read<VisitsCubit>();
-    _visitsCubit.getVisitById(widget.visitId);
-  }
-
-  @override
-  void dispose() {
-    _isDisposed = true; // Set flag before disposal
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    // Capture cubit reference immediately
+    final visitsCubit = context.read<VisitsCubit>();
+
+    // Load the visit details when the page is created
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      visitsCubit.getVisitById(visitId);
+    });
+
     return PopScope(
-      canPop: true, // Let Flutter handle pop navigation normally
+      canPop: true,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Visit Details'),
@@ -44,13 +33,85 @@ class _VisitDetailsPageState extends State<VisitDetailsPage> {
                   (previous, current) =>
                       current is VisitLoaded || current is VisitsLoading,
               builder: (context, state) {
-                if (state is VisitLoaded && !state.visit.isSynced) {
-                  return IconButton(
-                    icon: const Icon(Icons.cloud_upload),
-                    tooltip: 'Sync this visit',
-                    onPressed: () {
-                      _visitsCubit.syncVisits();
-                    },
+                if (state is VisitLoaded) {
+                  final visit = state.visit;
+                  return Row(
+                    children: [
+                      // Edit icon
+                      IconButton(
+                        icon: const Icon(Icons.edit),
+                        tooltip: 'Edit Visit',
+                        onPressed: () async {
+                          if (visit.id != null) {
+                            // Use an immediate function to handle edit result
+                            final result = await Navigator.of(
+                              context,
+                            ).push<bool>(
+                              MaterialPageRoute(
+                                builder:
+                                    (context) => VisitEditPage(visit: visit),
+                              ),
+                            );
+
+                            // Use the captured cubit reference
+                            if (result == true) {
+                              visitsCubit.getVisitById(visitId);
+                            }
+                          }
+                        },
+                      ),
+                      // Delete icon
+                      IconButton(
+                        icon: const Icon(Icons.delete),
+                        tooltip: 'Delete Visit',
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder:
+                                (dialogContext) => AlertDialog(
+                                  title: const Text('Confirm Delete'),
+                                  content: const Text(
+                                    'Are you sure you want to delete this visit? This action cannot be undone.',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed:
+                                          () => Navigator.pop(dialogContext),
+                                      child: const Text('CANCEL'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.pop(
+                                          dialogContext,
+                                        ); // Close dialog
+
+                                        // Use the captured cubit reference for deletion
+                                        visitsCubit.deleteVisit(visit.id!);
+
+                                        // Return to visits list
+                                        Navigator.pop(context, true);
+                                      },
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.red,
+                                      ),
+                                      child: const Text('DELETE'),
+                                    ),
+                                  ],
+                                ),
+                          );
+                        },
+                      ),
+                      // Sync icon (if needed)
+                      if (!visit.isSynced)
+                        IconButton(
+                          icon: const Icon(Icons.cloud_upload),
+                          tooltip: 'Sync this visit',
+                          onPressed: () {
+                            // Use the captured cubit reference
+                            visitsCubit.syncVisits();
+                          },
+                        ),
+                    ],
                   );
                 }
                 return const SizedBox.shrink();
@@ -60,191 +121,197 @@ class _VisitDetailsPageState extends State<VisitDetailsPage> {
         ),
         body: BlocConsumer<VisitsCubit, VisitsState>(
           listener: (context, state) {
-            if (_isDisposed) return; // Skip any callbacks if widget is disposed
-
             if (state is VisitsSynced) {
+              // Use the original listener context for UI updates
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Visit synced successfully')),
               );
-              if (!_isDisposed) {
-                _visitsCubit.getVisitById(widget.visitId);
-              }
+              // Use the captured cubit reference for data operations
+              visitsCubit.getVisitById(visitId);
             } else if (state is VisitsError) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Error: ${state.message}')),
               );
+            } else if (state is VisitDeleted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Visit deleted successfully')),
+              );
+              if (Navigator.canPop(context)) {
+                Navigator.pop(context, true);
+              }
             }
           },
           builder: (context, state) {
             if (state is VisitsLoading) {
               return const Center(child: CircularProgressIndicator());
             } else if (state is VisitLoaded) {
-              final visit = state.visit;
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Status and Sync status
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(visit.status),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            visit.status,
-                            style: TextStyle(
-                              color: _getStatusTextColor(visit.status),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const Spacer(),
-                        // Sync status
-                        if (!visit.isSynced)
-                          Row(
-                            children: [
-                              const Icon(Icons.cloud_off, color: Colors.orange),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Not synced',
-                                style: TextStyle(color: Colors.orange.shade800),
-                              ),
-                            ],
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Visit details
-                    _buildDetailItem(
-                      icon: Icons.person,
-                      title: 'Customer',
-                      child: CustomerNameDisplay(customerId: visit.customerId),
-                    ),
-                    _buildDetailItem(
-                      icon: Icons.calendar_today,
-                      title: 'Date',
-                      text: DateFormat(
-                        'EEEE, MMM dd, yyyy',
-                      ).format(visit.visitDate),
-                    ),
-                    _buildDetailItem(
-                      icon: Icons.access_time,
-                      title: 'Time',
-                      text: DateFormat('h:mm a').format(visit.visitDate),
-                    ),
-                    _buildDetailItem(
-                      icon: Icons.location_on,
-                      title: 'Location',
-                      text: visit.location,
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Notes
-                    const Text(
-                      'Notes',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black54,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        visit.notes.isEmpty ? 'No notes provided' : visit.notes,
-                        style: TextStyle(
-                          color:
-                              visit.notes.isEmpty ? Colors.grey : Colors.black,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Activities
-                    const Text(
-                      'Activities Performed',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black54,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    if (visit.activitiesDone.isEmpty)
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          'No activities recorded',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      )
-                    else
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children:
-                            visit.activitiesDone
-                                .map(
-                                  (activityId) =>
-                                      _buildActivityChip(activityId),
-                                )
-                                .toList(),
-                      ),
-                  ],
-                ),
-              );
+              return _buildVisitDetails(context, state.visit, visitsCubit);
             } else if (state is VisitsError) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      color: Colors.red,
-                      size: 48,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Error: ${state.message}',
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        context.read<VisitsCubit>().getVisitById(
-                          widget.visitId,
-                        );
-                      },
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              );
+              return _buildErrorView(context, state.message, visitsCubit);
             }
             return const Center(child: Text('Visit not found'));
           },
         ),
+      ),
+    );
+  }
+
+  Widget _buildVisitDetails(
+    BuildContext context,
+    Visit visit,
+    VisitsCubit cubit,
+  ) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Status and Sync status
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: _getStatusColor(visit.status),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  visit.status,
+                  style: TextStyle(
+                    color: _getStatusTextColor(visit.status),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              // Sync status
+              if (!visit.isSynced)
+                Row(
+                  children: [
+                    const Icon(Icons.cloud_off, color: Colors.orange),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Not synced',
+                      style: TextStyle(color: Colors.orange.shade800),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Visit details
+          _buildDetailItem(
+            icon: Icons.person,
+            title: 'Customer',
+            child: CustomerNameDisplay(customerId: visit.customerId),
+          ),
+          _buildDetailItem(
+            icon: Icons.calendar_today,
+            title: 'Date',
+            text: DateFormat('EEEE, MMM dd, yyyy').format(visit.visitDate),
+          ),
+          _buildDetailItem(
+            icon: Icons.access_time,
+            title: 'Time',
+            text: DateFormat('h:mm a').format(visit.visitDate),
+          ),
+          _buildDetailItem(
+            icon: Icons.location_on,
+            title: 'Location',
+            text: visit.location,
+          ),
+
+          const SizedBox(height: 16),
+
+          // Notes
+          const Text(
+            'Notes',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black54,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              visit.notes.isEmpty ? 'No notes provided' : visit.notes,
+              style: TextStyle(
+                color: visit.notes.isEmpty ? Colors.grey : Colors.black,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Activities
+          const Text(
+            'Activities Performed',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black54,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (visit.activitiesDone.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(12),
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'No activities recorded',
+                style: TextStyle(color: Colors.grey),
+              ),
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children:
+                  visit.activitiesDone
+                      .map((activityId) => _buildActivityChip(activityId))
+                      .toList(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorView(
+    BuildContext context,
+    String message,
+    VisitsCubit cubit,
+  ) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, color: Colors.red, size: 48),
+          const SizedBox(height: 16),
+          Text('Error: $message', textAlign: TextAlign.center),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              // Use the passed cubit reference
+              cubit.getVisitById(visitId);
+            },
+            child: const Text('Retry'),
+          ),
+        ],
       ),
     );
   }
@@ -262,7 +329,6 @@ class _VisitDetailsPageState extends State<VisitDetailsPage> {
         children: [
           Icon(icon, color: Colors.blue, size: 20),
           const SizedBox(width: 12),
-          // Ensure the child content can flex but not expand unbounded
           Flexible(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

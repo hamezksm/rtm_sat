@@ -91,16 +91,20 @@ class VisitsRemoteDataSourceImpl implements VisitsRemoteDataSource {
     if (visit.id == null) throw Exception('Visit ID cannot be null');
 
     final response = await client.patch(
-      Uri.parse('$baseUrl/visits?eq.id=${visit.id}'),
+      Uri.parse('$baseUrl/visits?id=eq.${visit.id}'),
       headers: {
         'Content-Type': 'application/json',
         'apiKey': apiKey,
         'Authorization': 'Bearer $apiKey',
       },
-      body: json.encode(visit.toJson()),
+      body: () {
+        final visitJson = visit.toJson();
+        visitJson.remove('id');
+        return json.encode(visitJson);
+      }(),
     );
 
-    if (response.statusCode != 200) {
+    if (response.statusCode != 204) {
       throw Exception('Failed to update visit: ${response.body}');
     }
   }
@@ -108,7 +112,7 @@ class VisitsRemoteDataSourceImpl implements VisitsRemoteDataSource {
   @override
   Future<void> deleteVisit(int id) async {
     final response = await client.delete(
-      Uri.parse('$baseUrl/visits/$id'),
+      Uri.parse('$baseUrl/visits?id=eq.$id'),
       headers: {
         'Content-Type': 'application/json',
         'apiKey': apiKey,
@@ -116,7 +120,7 @@ class VisitsRemoteDataSourceImpl implements VisitsRemoteDataSource {
       },
     );
 
-    if (response.statusCode != 204 && response.statusCode != 200) {
+    if (response.statusCode != 204 ) {
       throw Exception('Failed to delete visit: ${response.body}');
     }
   }

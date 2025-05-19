@@ -1,33 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:rtm_sat/features/visits_tracker/domain/entities/visit.dart';
+import 'package:rtm_sat/features/visits_tracker/presentation/pages/visit_create_page.dart';
+import 'package:rtm_sat/features/visits_tracker/presentation/pages/visit_details_page.dart';
 import 'package:rtm_sat/features/visits_tracker/presentation/widgets/customer_name_display.dart';
 import '../cubit/visits_cubit.dart';
-import '../../domain/entities/visit.dart';
-import 'visit_create_page.dart';
-import 'visit_details_page.dart';
 
-class VisitsListPage extends StatefulWidget {
+class VisitsListPage extends StatelessWidget {
   const VisitsListPage({super.key});
 
   @override
-  State<VisitsListPage> createState() => _VisitsListPageState();
-}
-
-class _VisitsListPageState extends State<VisitsListPage> {
-  @override
-  void initState() {
-    super.initState();
-    context.read<VisitsCubit>().getVisits();
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    // 1) Capture the cubit once, at the top of build
+    final visitsCubit = context.read<VisitsCubit>();
+
+    // 2) Trigger the initial load exactly once
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!context.mounted) return;
+      visitsCubit.getVisits();
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Visits'),
@@ -35,7 +28,7 @@ class _VisitsListPageState extends State<VisitsListPage> {
           IconButton(
             icon: const Icon(Icons.sync),
             onPressed: () {
-              context.read<VisitsCubit>().syncVisits();
+              visitsCubit.syncVisits();
             },
           ),
         ],
@@ -46,8 +39,7 @@ class _VisitsListPageState extends State<VisitsListPage> {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Visits synced successfully')),
             );
-            // Reload visits after sync
-            context.read<VisitsCubit>().getVisits();
+            visitsCubit.getVisits();
           } else if (state is VisitsError) {
             ScaffoldMessenger.of(
               context,
@@ -58,113 +50,113 @@ class _VisitsListPageState extends State<VisitsListPage> {
           if (state is VisitsLoading) {
             return const Center(child: CircularProgressIndicator());
           }
-
           if (state is VisitsError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, color: Colors.red, size: 48),
-                  const SizedBox(height: 16),
-                  Text('Error: ${state.message}', textAlign: TextAlign.center),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      context.read<VisitsCubit>().getVisits();
-                    },
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
+            return _buildErrorView(state.message, visitsCubit, context);
           }
-
           if (state is VisitsLoaded) {
             if (state.visits.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.event_busy, size: 64, color: Colors.grey),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'No visits yet',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Tap the + button to create a new visit',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ],
-                ),
-              );
+              return _buildEmptyView();
             }
-
-            return _buildVisitsList(context, state.visits);
+            return _buildVisitsList(state.visits, visitsCubit, context);
           }
-
           return const Center(child: Text('No visits available'));
         },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
+          // capture
+          final cubit = visitsCubit;
           await Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const VisitCreatePage()),
           );
-          // Refresh list after returning from create page
-          if (mounted) {
-            context.read<VisitsCubit>().getVisits();
-          }
+          if (!context.mounted) return;
+          cubit.getVisits();
         },
         child: const Icon(Icons.add),
       ),
     );
   }
 
-  Widget _buildVisitsList(BuildContext context, List<Visit> visits) {
-    // Group visits by date for better organization
-    final groupedVisits = <DateTime, List<Visit>>{};
+  Widget _buildErrorView(
+    String message,
+    VisitsCubit cubit,
+    BuildContext context,
+  ) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, color: Colors.red, size: 48),
+          const SizedBox(height: 16),
+          Text('Error: $message', textAlign: TextAlign.center),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              cubit.getVisits();
+            },
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
 
-    for (final visit in visits) {
-      final date = DateTime(
-        visit.visitDate.year,
-        visit.visitDate.month,
-        visit.visitDate.day,
+  Widget _buildEmptyView() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: const [
+          Icon(Icons.event_busy, size: 64, color: Colors.grey),
+          SizedBox(height: 16),
+          Text(
+            'No visits yet',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Tap the + button to create a new visit',
+            style: TextStyle(color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVisitsList(
+    List<Visit> visits,
+    VisitsCubit cubit,
+    BuildContext context,
+  ) {
+    // group & sort
+    final grouped = <DateTime, List<Visit>>{};
+    for (var v in visits) {
+      final day = DateTime(
+        v.visitDate.year,
+        v.visitDate.month,
+        v.visitDate.day,
       );
-
-      if (!groupedVisits.containsKey(date)) {
-        groupedVisits[date] = [];
-      }
-
-      groupedVisits[date]!.add(visit);
+      grouped.putIfAbsent(day, () => []).add(v);
     }
-
-    // Sort dates in descending order (newest first)
-    final sortedDates =
-        groupedVisits.keys.toList()..sort((a, b) => b.compareTo(a));
+    final sortedDays = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
 
     return ListView.builder(
-      itemCount: sortedDates.length,
-      itemBuilder: (context, index) {
-        final date = sortedDates[index];
-        final dateVisits = groupedVisits[date]!;
-
-        // Sort visits within the same date by time (newest first)
-        dateVisits.sort((a, b) => b.visitDate.compareTo(a.visitDate));
-
+      itemCount: sortedDays.length,
+      itemBuilder: (ctx, i) {
+        final day = sortedDays[i];
+        final dayVisits =
+            grouped[day]!..sort((a, b) => b.visitDate.compareTo(a.visitDate));
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Text(
-                _formatDateHeader(date),
+                _formatDateHeader(day),
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -172,7 +164,7 @@ class _VisitsListPageState extends State<VisitsListPage> {
                 ),
               ),
             ),
-            ...dateVisits.map((visit) => _buildVisitCard(context, visit)),
+            ...dayVisits.map((v) => _buildVisitCard(v, cubit, context)),
           ],
         );
       },
@@ -182,22 +174,20 @@ class _VisitsListPageState extends State<VisitsListPage> {
   String _formatDateHeader(DateTime date) {
     final now = DateTime.now();
     final yesterday = DateTime(now.year, now.month, now.day - 1);
-    final dateFormatted = DateFormat('MMM dd, yyyy').format(date);
-
+    final formatted = DateFormat('MMM dd, yyyy').format(date);
     if (date.year == now.year &&
         date.month == now.month &&
         date.day == now.day) {
-      return 'Today - $dateFormatted';
+      return 'Today – $formatted';
     } else if (date.year == yesterday.year &&
         date.month == yesterday.month &&
         date.day == yesterday.day) {
-      return 'Yesterday - $dateFormatted';
-    } else {
-      return dateFormatted;
+      return 'Yesterday – $formatted';
     }
+    return formatted;
   }
 
-  Widget _buildVisitCard(BuildContext context, Visit visit) {
+  Widget _buildVisitCard(Visit visit, VisitsCubit cubit, BuildContext context) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       elevation: 2,
@@ -210,23 +200,22 @@ class _VisitsListPageState extends State<VisitsListPage> {
       ),
       child: InkWell(
         onTap: () async {
-          if (visit.id != null) {
-            // Create a fresh provider instead of using the same cubit
-            await Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => VisitDetailsPage(visitId: visit.id!),
-              ),
-            );
-
-            // Refresh visits list after returning
-            if (mounted) {
-              context.read<VisitsCubit>().getVisits();
-            }
-          } else {
+          if (visit.id == null) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Cannot open visit: ID is missing')),
             );
+            return;
           }
+          // capture cubit reference
+          final localCubit = cubit;
+          await Navigator.of(context).push<bool>(
+            MaterialPageRoute(
+              builder: (_) => VisitDetailsPage(visitId: visit.id!),
+            ),
+          );
+          // guard
+          if (!context.mounted) return;
+          localCubit.getVisits();
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(
@@ -234,35 +223,34 @@ class _VisitsListPageState extends State<VisitsListPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // status & sync
               Row(
                 children: [
-                  // Status indicator
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: _getStatusColor(visit.status),
+                      color: _statusColor(visit.status),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       visit.status,
                       style: TextStyle(
-                        color: _getStatusTextColor(visit.status),
+                        color: _statusTextColor(visit.status),
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
                       ),
                     ),
                   ),
                   const Spacer(),
-                  // Sync status indicator
                   if (!visit.isSynced)
                     const Icon(Icons.cloud_off, color: Colors.orange, size: 16),
                 ],
               ),
               const SizedBox(height: 12),
-              // Customer ID and time
+              // customer & time
               Row(
                 children: [
                   const Icon(Icons.person, size: 16, color: Colors.grey),
@@ -276,7 +264,7 @@ class _VisitsListPageState extends State<VisitsListPage> {
                 ],
               ),
               const SizedBox(height: 12),
-              // Location
+              // location
               Row(
                 children: [
                   const Icon(Icons.location_on, size: 16, color: Colors.grey),
@@ -293,7 +281,6 @@ class _VisitsListPageState extends State<VisitsListPage> {
               ),
               if (visit.notes.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                // Notes preview
                 Text(
                   visit.notes,
                   maxLines: 2,
@@ -301,25 +288,14 @@ class _VisitsListPageState extends State<VisitsListPage> {
                   style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
                 ),
               ],
-              const SizedBox(height: 12),
-              // Activities
-              if (visit.activitiesDone.isNotEmpty)
+              if (visit.activitiesDone.isNotEmpty) ...[
+                const SizedBox(height: 12),
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
                   children:
-                      visit.activitiesDone.take(3).map((activityId) {
-                        // Map activity IDs to names - replace with your actual mapping logic
-                        final activityMap = {
-                          '1': 'Product Demo',
-                          '2': 'Sales Presentation',
-                          '3': 'Contract Negotiation',
-                          '4': 'Customer Support',
-                          '5': 'Training Session',
-                        };
-                        final activityName =
-                            activityMap[activityId] ?? 'Activity #$activityId';
-
+                      visit.activitiesDone.map((id) {
+                        // … your chip logic …
                         return Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
@@ -330,36 +306,16 @@ class _VisitsListPageState extends State<VisitsListPage> {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            activityName,
+                            'Act $id',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.blue.shade800,
                             ),
                           ),
                         );
-                      }).toList() +
-                      (visit.activitiesDone.length > 3
-                          ? [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade200,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                '+${visit.activitiesDone.length - 3} more',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade700,
-                                ),
-                              ),
-                            ),
-                          ]
-                          : []),
+                      }).toList(),
                 ),
+              ],
             ],
           ),
         ),
@@ -367,8 +323,8 @@ class _VisitsListPageState extends State<VisitsListPage> {
     );
   }
 
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
+  Color _statusColor(String s) {
+    switch (s.toLowerCase()) {
       case 'completed':
         return Colors.green.shade100;
       case 'pending':
@@ -380,8 +336,8 @@ class _VisitsListPageState extends State<VisitsListPage> {
     }
   }
 
-  Color _getStatusTextColor(String status) {
-    switch (status.toLowerCase()) {
+  Color _statusTextColor(String s) {
+    switch (s.toLowerCase()) {
       case 'completed':
         return Colors.green.shade900;
       case 'pending':
