@@ -166,7 +166,7 @@ void main() {
             visitsCubit.stream,
             emitsInOrder([
               isA<VisitsLoading>(),
-              isA<VisitsLoaded>(), // This is probably what you're missing
+              isA<VisitsLoaded>(),
               isA<VisitsSynced>(),
             ]),
           );

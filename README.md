@@ -153,7 +153,7 @@ cd rtm_sat
 Create a `.env` file:
 
 ``` bash
-API_URL=your_api_url_here
+BASE_URL=your_base_url_here
 API_KEY=your_api_key_here
 ```
 
