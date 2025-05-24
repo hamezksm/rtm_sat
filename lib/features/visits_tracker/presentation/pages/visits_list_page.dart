@@ -6,16 +6,16 @@ import 'package:rtm_sat/features/visits_tracker/presentation/pages/visit_create_
 import 'package:rtm_sat/features/visits_tracker/presentation/pages/visit_details_page.dart';
 import 'package:rtm_sat/features/visits_tracker/presentation/widgets/customer_name_display.dart';
 import '../cubit/visits_cubit.dart';
+import '../cubit/visits_list_filter/visits_list_filter_cubit.dart';
+import '../cubit/visits_list_filter/visits_list_filter_state.dart';
 
 class VisitsListPage extends StatelessWidget {
   const VisitsListPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // 1) Capture the cubit once, at the top of build
     final visitsCubit = context.read<VisitsCubit>();
 
-    // 2) Trigger the initial load exactly once
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!context.mounted) return;
       visitsCubit.getVisits();
@@ -32,6 +32,88 @@ class VisitsListPage extends StatelessWidget {
             },
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(100),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: BlocBuilder<VisitsListFilterCubit, VisitsListFilterState>(
+              builder: (context, filterState) {
+                return Column(
+                  children: [
+                    // Search field
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.shade300,
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: TextField(
+                        decoration: InputDecoration(
+                          hintText: 'Search by customer, location, or notes',
+                          prefixIcon: const Icon(Icons.search),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 0,
+                            horizontal: 16,
+                          ),
+                        ),
+                        style: const TextStyle(color: Colors.black),
+                        onChanged: (value) {
+                          context
+                              .read<VisitsListFilterCubit>()
+                              .setSearchQuery(value.trim());
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // Status filter dropdown
+                    Row(
+                      children: [
+                        const Text('Status:', style: TextStyle(fontSize: 14)),
+                        const SizedBox(width: 8),
+                        DropdownButton<String>(
+                          value: filterState.statusFilter,
+                          hint: const Text('All'),
+                          items:
+                              <String?>[
+                                    null,
+                                    'Completed',
+                                    'Pending',
+                                    'Cancelled',
+                                  ]
+                                  .map(
+                                    (status) => DropdownMenuItem<String>(
+                                      value: status,
+                                      child: Text(status ?? 'All'),
+                                    ),
+                                  )
+                                  .toList(),
+                          onChanged: (value) {
+                            context
+                                .read<VisitsListFilterCubit>()
+                                .setStatusFilter(value);
+                          },
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
       ),
       body: BlocConsumer<VisitsCubit, VisitsState>(
         listener: (context, state) {
@@ -41,9 +123,9 @@ class VisitsListPage extends StatelessWidget {
             );
             visitsCubit.getVisits();
           } else if (state is VisitsError) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text('Error: ${state.message}')));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error: ${state.message}')),
+            );
           }
         },
         builder: (context, state) {
@@ -54,28 +136,54 @@ class VisitsListPage extends StatelessWidget {
             return _buildErrorView(state.message, visitsCubit, context);
           }
           if (state is VisitsLoaded) {
-            if (state.visits.isEmpty) {
-              return _buildEmptyView();
-            }
-            return _buildVisitsList(state.visits, visitsCubit, context);
+            return BlocBuilder<VisitsListFilterCubit, VisitsListFilterState>(
+              builder: (context, filterState) {
+                final filteredVisits = _applySearchAndFilter(
+                  state.visits,
+                  filterState.searchQuery,
+                  filterState.statusFilter,
+                );
+                if (filteredVisits.isEmpty) {
+                  return _buildEmptyView();
+                }
+                return _buildVisitsList(filteredVisits, visitsCubit, context);
+              },
+            );
           }
           return const Center(child: Text('No visits available'));
         },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          // capture
-          final cubit = visitsCubit;
           await Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const VisitCreatePage()),
           );
           if (!context.mounted) return;
-          cubit.getVisits();
+          visitsCubit.getVisits();
         },
         child: const Icon(Icons.add),
       ),
     );
+  }
+
+  List<Visit> _applySearchAndFilter(
+    List<Visit> visits,
+    String searchQuery,
+    String? statusFilter,
+  ) {
+    return visits.where((visit) {
+      final matchesStatus =
+          statusFilter == null ||
+          visit.status.toLowerCase() == statusFilter.toLowerCase();
+      final query = searchQuery.toLowerCase();
+      final matchesQuery =
+          query.isEmpty ||
+          visit.location.toLowerCase().contains(query) ||
+          visit.notes.toLowerCase().contains(query) ||
+          visit.customerId.toString().contains(query);
+      return matchesStatus && matchesQuery;
+    }).toList();
   }
 
   Widget _buildErrorView(
@@ -132,7 +240,6 @@ class VisitsListPage extends StatelessWidget {
     VisitsCubit cubit,
     BuildContext context,
   ) {
-    // group & sort
     final grouped = <DateTime, List<Visit>>{};
     for (var v in visits) {
       final day = DateTime(
@@ -206,14 +313,12 @@ class VisitsListPage extends StatelessWidget {
             );
             return;
           }
-          // capture cubit reference
           final localCubit = cubit;
           await Navigator.of(context).push<bool>(
             MaterialPageRoute(
               builder: (_) => VisitDetailsPage(visitId: visit.id!),
             ),
           );
-          // guard
           if (!context.mounted) return;
           localCubit.getVisits();
         },
@@ -295,7 +400,6 @@ class VisitsListPage extends StatelessWidget {
                   runSpacing: 6,
                   children:
                       visit.activitiesDone.map((id) {
-                        // … your chip logic …
                         return Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,

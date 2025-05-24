@@ -40,6 +40,7 @@ import 'package:rtm_sat/features/visits_tracker/domain/usecases/get_visit_by_id.
 import 'package:rtm_sat/features/visits_tracker/presentation/cubit/visit_detail_cubit.dart';
 import 'package:rtm_sat/features/visits_tracker/presentation/cubit/visits_cubit.dart';
 import 'package:rtm_sat/features/visits_tracker/presentation/cubit/visit_form_cubit.dart';
+import 'package:rtm_sat/features/visits_tracker/presentation/cubit/visits_list_filter/visits_list_filter_cubit.dart';
 
 final GetIt sl = GetIt.instance;
 
@@ -211,6 +212,9 @@ Future<void> initDependencies() async {
       initialVisit: visit,
     ),
   );
+
+  // Register VisitsListFilterCubit
+  sl.registerFactory(() => VisitsListFilterCubit());
 
   // Print success message for debugging
   log('Service locator initialized successfully');
