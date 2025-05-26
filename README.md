@@ -221,7 +221,6 @@ flutter run
 * Server wins in conflict resolution
 * No real-time sync (uses polling)
 * Offline mode lacks support for complex operations
-* Complex operations for data accuracy by having to refresh after any remote POST method calls as those APIs do not return an ID.
 
 ### 🔁 Design Trade-offs
 
@@ -244,5 +243,3 @@ Flutter Consultant Candidate – [Solutech](https://solutech.co.ke)
 This project is part of a technical assessment and is not licensed for production use.
 
 ---
-
-Let me know if you want this exported as a `README.md` file or further customized (e.g. badges, live demo links, etc.).
